@@ -209,6 +209,16 @@ def QST_peaks(data_ts):
         #Feature 8: min hr_cleaned (nk-rpeaks)
         #Feature 9: max hr (bio-rpeaks)
         #Feature10: max hr_cleaned (nk-rpeaks)
+        #Feature11: median RR interval
+        #Feature12: median RR_cleaned interval
+        #Feature13: mean RR interval
+        #Feature14: mean RR_cleaned interval
+        #Feature15: min RR interval
+        #Feature16: min RR_cleaned interval
+        #Feature17: max RR interval
+        #Feature18: max RR_cleaned interval
+        #Feature19: STD RR interval
+        #Feature20: STD RR_cleaned interval
 
 def feat_hrv(data_ts):
 
@@ -228,11 +238,10 @@ def feat_hrv(data_ts):
         heart_rate_cleaned = 60/RR_intervals_cleaned
 
         #add HRs
-        feature_hr.append([heart_rate, heart_rate_cleaned])
+        feature_hr.append([heart_rate, heart_rate_cleaned, RR_intervals, RR_intervals_cleaned])
 
-
-    #extract properties/features (mean)
-    feature_hrv = np.empty(10)
+    #extract properties/features
+    feature_hrv = np.empty(20)
 
     for i in feature_hr:
 
@@ -246,18 +255,26 @@ def feat_hrv(data_ts):
         # min & max
         try:
             min_hr = np.min(i[0])
-            min_hr_cleaned = np.min(i[1])
 
         except ValueError:
             min_hr = np.nan
+
+        try:
+            min_hr_cleaned = np.min(i[1])
+
+        except ValueError:
             min_hr_cleaned = np.nan
 
         try:
             max_hr = np.max(i[0])
-            max_hr_cleaned = np.max(i[1])
 
         except ValueError:
             max_hr = np.nan
+
+        try:
+            max_hr_cleaned = np.max(i[1])
+
+        except ValueError:
             max_hr_cleaned = np.nan
 
         z_threshold = 3
@@ -277,9 +294,46 @@ def feat_hrv(data_ts):
         median_hr = np.median(i[0])
         median_hr_cleaned = np.median(i[1])
 
+        RR_interval_median = np.median(i[2])
+        RR_interval_mean = np.mean(i[2])
+
+        try:
+            RR_interval_min = np.min(i[2])
+
+        except ValueError:
+            RR_interval_min = np.nan
+
+        try:
+            RR_interval_max = np.max(i[2])
+
+        except ValueError:
+            RR_interval_max = np.nan
+
+        RR_interval_std = np.std(i[2])
+
+        RR_interval_cleaned_median = np.median(i[3])
+        RR_interval_cleaned_mean = np.mean(i[3])
+
+        try:
+            RR_interval_cleaned_min = np.min(i[3])
+
+        except ValueError:
+            RR_interval_cleaned_min = np.nan
+
+        try:
+            RR_interval_cleaned_max = np.max(i[3])
+
+        except ValueError:
+            RR_interval_cleaned_max = np.nan
+
+        RR_interval_cleaned_std = np.std(i[3])
+
         #add features
         hrv_feat = [median_hr, median_hr_cleaned, hrv, hrv_cleaned,
-            mean_hr, mean_hr_cleaned, min_hr, min_hr_cleaned, max_hr, max_hr_cleaned]
+            mean_hr, mean_hr_cleaned, min_hr, min_hr_cleaned, max_hr, max_hr_cleaned,
+            RR_interval_median, RR_interval_mean, RR_interval_min, RR_interval_max, RR_interval_std,
+            RR_interval_cleaned_median, RR_interval_cleaned_mean, RR_interval_cleaned_min,
+            RR_interval_cleaned_max, RR_interval_cleaned_std]
 
         feature_hrv = np.vstack([feature_hrv, hrv_feat])
 
@@ -308,9 +362,8 @@ def feature_extraction(train_data_ts, test_data_ts):
     print("finished with QST_peak-features")
 
     #Stack the features
-    X_train_features = np.c_[ feat_hrv_train, feat_rpeak_var_train, feat_qst_peak_train ]
-    X_test_features = np.c_[ feat_hrv_test, feat_rpeak_var_test, feat_qst_peak_test ]
-
+    X_train_features = np.c_[feat_hrv_train, feat_rpeak_var_train, feat_qst_peak_train]
+    X_test_features = np.c_[feat_hrv_test, feat_rpeak_var_test, feat_qst_peak_test]
     print("Feature extraction complete.")
 
     return pd.DataFrame.from_records(X_train_features), pd.DataFrame.from_records(X_test_features)
@@ -318,6 +371,3 @@ def feature_extraction(train_data_ts, test_data_ts):
 print(f"X_train: {X_train.shape} and X_test: {X_test.shape}.")
 
 X_train_features, X_test_features = feature_extraction(X_train.to_numpy(), X_test.to_numpy())
-
-print(X_train_features.to_string())
-print(X_test_features.to_string())
