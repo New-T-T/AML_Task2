@@ -53,13 +53,18 @@ def feat_rpeak_variance(data_ts, static_rpeak_threshold = 400):           #retur
         median_rpeaks = np.median(rpeak_values_cleaned)
         mean_rpeak_cleaned = np.mean(rpeak_values_cleaned)
 
-        #max & min
+        #max
         try:
             max_rpeaks = np.max(rpeak_values_cleaned)
-            min_rpeaks = np.min(rpeak_values_cleaned)
 
         except ValueError:
             max_rpeaks = np.nan
+
+        #min
+        try:
+            min_rpeaks = np.min(rpeak_values_cleaned)
+
+        except ValueError:
             min_rpeaks = np.nan
 
         # (modified)-zscore for rpeak-outlier detection
@@ -97,8 +102,8 @@ def feat_rpeak_variance(data_ts, static_rpeak_threshold = 400):           #retur
 
     return feature_rpeaks_variance
 
-#Q,S,T-peaks
-#18 features in total
+#P,Q,S,T-peaks and cardiac phase
+#24 features in total
 #For each peak type:
     #Feature1: mean
     #Feature2: median
@@ -107,9 +112,9 @@ def feat_rpeak_variance(data_ts, static_rpeak_threshold = 400):           #retur
     #Feature5: STD
     #Feature6: MAD
 
-def QST_peaks(data_ts):
+def PQST_peaks(data_ts):
 
-    feature_qst_peaks = np.empty(18)
+    feature_PQST_peaks = np.empty(24)
 
     counter = 0 # for counting the skipped iterations
 
@@ -121,9 +126,7 @@ def QST_peaks(data_ts):
             #capture the signal and clean it
             raw_signal = data_ts[i,][~np.isnan(data_ts[i,])]
 
-            #print(len(raw_signal))
-
-            # delineate the cleaned ECG signal to get the Q,S,T-peaks
+            # delineate the cleaned ECG signal to get the P,Q,S,T-peaks
             cleaned_signal = nk.ecg_clean(raw_signal, sampling_rate=300, method="neurokit")
             _, rpeaks = nk.ecg_peaks(cleaned_signal, sampling_rate=300)
             signals, waves = nk.ecg_delineate(cleaned_signal, rpeaks, sampling_rate=300, method="dwt")
@@ -145,6 +148,25 @@ def QST_peaks(data_ts):
             qpeaks_min = np.nan
             qpeaks_std = np.nan
             qpeaks_mad = np.nan
+
+        try:
+            # P-peak features
+            ppeaks_mean = np.mean(waves["ECG_P_Peaks"])
+            ppeaks_median = np.median(waves["ECG_P_Peaks"])
+            ppeaks_max = np.max(waves["ECG_P_Peaks"])
+            ppeaks_min = np.min(waves["ECG_P_Peaks"])
+            ppeaks_std = np.std(waves["ECG_P_Peaks"])
+            ppeaks_mad = stats.median_abs_deviation(waves["ECG_P_Peaks"])
+
+        except:
+            #print(f"No result for {i}.")
+            counter_p += 1
+            ppeaks_mean = np.nan
+            ppeaks_median = np.nan
+            ppeaks_max = np.nan
+            ppeaks_min = np.nan
+            ppeaks_std = np.nan
+            ppeaks_mad = np.nan
 
         try:
             # S-peak features
@@ -185,18 +207,89 @@ def QST_peaks(data_ts):
             tpeaks_mad = np.nan
 
         #add features
-        qst_feat = [qpeaks_mean, qpeaks_median, qpeaks_max, qpeaks_min, qpeaks_std, qpeaks_mad,
+        pqst_feat = [qpeaks_mean, qpeaks_median, qpeaks_max, qpeaks_min, qpeaks_std, qpeaks_mad,
+            ppeaks_mean, ppeaks_median, ppeaks_max, ppeaks_min, ppeaks_std, ppeaks_mad,
             speaks_mean, speaks_median, speaks_max, speaks_min, speaks_std, speaks_mad,
             tpeaks_mean, tpeaks_median, tpeaks_max, tpeaks_min, tpeaks_std, tpeaks_mad]
 
-        feature_qst_peaks = np.vstack([feature_qst_peaks, qst_feat])
+        feature_PQST_peaks = np.vstack([feature_PQST_peaks, pqst_feat])
 
-    print(f"Counter is: {counter}.")
+    #print(f"Counter is: {counter}.")
 
-    feature_qst_peaks = np.delete(feature_qst_peaks, 0, 0)        #delete the (random) first column
+    feature_PQST_peaks = np.delete(feature_PQST_peaks, 0, 0)        #delete the (random) first column
 
-    return feature_qst_peaks
+    return feature_PQST_peaks
 
+#Features:
+    #Feature1: mean
+    #Feature2: median
+    #Feature3: max
+    #Feature4: min
+    #Feature5: STD
+    #Feature6: MAD
+
+def other_parameters(data_ts):
+
+    features = np.empty(12)
+
+    counter_skipped = 0 # for counting the skipped iterations
+
+    for i in range(len(data_ts)):
+
+        print(f"Iteration {i}")
+
+        try:
+            #capture the signal and clean it
+            raw_signal = data_ts[i,][~np.isnan(data_ts[i,])]
+            cleaned_signal = nk.ecg_clean(raw_signal, sampling_rate=300, method="neurokit")
+            _, rpeaks = nk.ecg_peaks(cleaned_signal, sampling_rate=300)
+
+            ecg_rate = nk.signal_rate(rpeak_values_cleaned, sampling_rate=300)
+
+            ecg_rate_mean = np.mean(ecg_rate)
+            ecg_rate_median = np.median(ecg_rate)
+            ecg_rate_min = np.min(ecg_rate)
+            ecg_rate_max = np.max(ecg_rate)
+            ecg_rate_std = np.std(ecg_rate)
+            ecg_rate_mad = stats.median_abs_deviation(ecg_rate)
+
+        except:
+            counter_skipped += 1
+            ecg_rate_mean = np.nan
+            ecg_rate_median = np.nan
+            ecg_rate_min = np.nan
+            ecg_rate_max = np.nan
+            ecg_rate_std = np.nan
+            ecg_rate_mad = np.nan
+
+        try:
+            rsp_rate = nk.ecg_rsp(ecg_rate, sampling_rate=300)
+
+            rsp_rate_mean = np.mean(rsp_rate)
+            rsp_rate_median = np.median(rsp_rate)
+            rsp_rate_min = np.min(rsp_rate)
+            rsp_rate_max = np.max(rsp_rate)
+            rsp_rate_std = np.std(rsp_rate)
+            rsp_rate_mad = stats.median_abs_deviation(rsp_rate)
+
+        except:
+            rsp_rate_mean = np.nan
+            rsp_rate_median = np.nan
+            rsp_rate_min = np.nan
+            rsp_rate_max = np.nan
+            rsp_rate_std = np.nan
+            rsp_rate_mad = np.nan
+
+        feat_i = [ecg_rate_mean, ecg_rate_median, ecg_rate_min, ecg_rate_max, ecg_rate_std, ecg_rate_mad,
+            rsp_rate_mean, rsp_rate_median, rsp_rate_min, rsp_rate_max, rsp_rate_std, rsp_rate_mad]
+
+        features = np.vstack([features, feat_i])
+
+    print(f"Counter is: {counter_skipped}.")
+
+    features = np.delete(features, 0, 0)
+
+    return features
 
 # HRV: heart rate variability
         #Feature 1: median_hr (bio-rpeaks)
@@ -219,10 +312,27 @@ def QST_peaks(data_ts):
         #Feature18: max RR_cleaned interval
         #Feature19: STD RR interval
         #Feature20: STD RR_cleaned interval
+        #Feature21: hrv_welch_HF
+        #Feature22: hrv_welch_VHF
+        #Feature23: hrv_welch_HFn
+        #Feature24: hrv_welch_LnHF
+        #Feature25: hrv_burg_HF
+        #Feature26: hrv_burg_VHF
+        #Feature27: hrv_burg_HFn
+        #Feature28: hrv_burg_LnHF
+
+"""
+Information about features 21-28:
+Frequency domain: Spectral power density in various frequency bands
+(Ultra low/ULF, Very low/VLF, Low/LF, High/HF, Very high/VHF),
+Ratio of LF to HF power, Normalized LF (LFn) and HF (HFn), Log transformed HF (LnHF).
+"""
 
 def feat_hrv(data_ts):
 
     feature_hr = []
+
+    counter_skipped = 0
 
     for i in range(len(data_ts)):
         #capture the signal (clean and use neurokit.ecg_findpeaks & no clean and biosppy's ecg.engzee_segmenter)
@@ -237,11 +347,16 @@ def feat_hrv(data_ts):
         heart_rate = 60/RR_intervals
         heart_rate_cleaned = 60/RR_intervals_cleaned
 
+        peaks, info = nk.ecg_peaks(cleaned_signal, sampling_rate=300)
+        hrv_welch = nk.hrv_frequency(peaks, sampling_rate=300, psd_method="welch")
+        hrv_burg = nk.hrv_frequency(peaks, sampling_rate=300, psd_method="burg")
+
         #add HRs
-        feature_hr.append([heart_rate, heart_rate_cleaned, RR_intervals, RR_intervals_cleaned])
+        feature_hr.append([heart_rate, heart_rate_cleaned, RR_intervals, RR_intervals_cleaned,
+            hrv_welch, hrv_burg])
 
     #extract properties/features
-    feature_hrv = np.empty(20)
+    feature_hrv = np.empty(28)
 
     for i in feature_hr:
 
@@ -328,16 +443,30 @@ def feat_hrv(data_ts):
 
         RR_interval_cleaned_std = np.std(i[3])
 
+        hrv_welch_HF = i[4]["HRV_HF"][0]
+        hrv_welch_VHF = i[4]["HRV_VHF"][0]
+        hrv_welch_HFn = i[4]["HRV_HFn"][0]
+        hrv_welch_LnHF = i[4]["HRV_LnHF"][0]
+
+        hrv_burg_HF = i[5]["HRV_HF"][0]
+        hrv_burg_VHF = i[5]["HRV_VHF"][0]
+        hrv_burg_HFn = i[5]["HRV_HFn"][0]
+        hrv_burg_LnHF = i[5]["HRV_LnHF"][0]
+
         #add features
         hrv_feat = [median_hr, median_hr_cleaned, hrv, hrv_cleaned,
             mean_hr, mean_hr_cleaned, min_hr, min_hr_cleaned, max_hr, max_hr_cleaned,
             RR_interval_median, RR_interval_mean, RR_interval_min, RR_interval_max, RR_interval_std,
             RR_interval_cleaned_median, RR_interval_cleaned_mean, RR_interval_cleaned_min,
-            RR_interval_cleaned_max, RR_interval_cleaned_std]
+            RR_interval_cleaned_max, RR_interval_cleaned_std,
+            hrv_welch_HF, hrv_welch_VHF, hrv_welch_HFn, hrv_welch_LnHF,
+            hrv_burg_HF, hrv_burg_VHF, hrv_burg_HFn, hrv_burg_LnHF]
 
         feature_hrv = np.vstack([feature_hrv, hrv_feat])
 
     feature_hrv = np.delete(feature_hrv, 0, 0)
+
+    #print(f"Counter skipped HRV: {counter_skipped}.")
 
     return feature_hrv
 
@@ -356,10 +485,15 @@ def feature_extraction(train_data_ts, test_data_ts):
     feat_rpeak_var_test = feat_rpeak_variance(test_data_ts)
     print("finished with R_peak_variance-features")
 
-    #QST_peaks
-    feat_qst_peak_train = QST_peaks(train_data_ts)
-    feat_qst_peak_test = QST_peaks(test_data_ts)
+    #PQST_peaks
+    feat_qst_peak_train = PQST_peaks(train_data_ts)
+    feat_qst_peak_test = PQST_peaks(test_data_ts)
     print("finished with QST_peak-features")
+
+    #other features
+    #feat_other_train = other_parameters(train_data_ts)
+    #feat_other_test = other_parameters(test_data_ts)
+    #print("finished with other features")
 
     #Stack the features
     X_train_features = np.c_[feat_hrv_train, feat_rpeak_var_train, feat_qst_peak_train]
