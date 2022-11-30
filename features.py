@@ -363,9 +363,19 @@ def all_features(data_ts, static_rpeak_threshold = 400):           #returns an a
         RR_interval_std = np.nanstd(i[2])
         RR_interval_cleaned_median = np.nanmedian(i[3])
         RR_interval_cleaned_mean = np.nanmean(i[3])
-        RR_interval_cleaned_min = np.nanmin(i[3])
-        RR_interval_cleaned_max = np.nanmax(i[3])
         RR_interval_cleaned_std = np.nanstd(i[3])
+
+        try:
+            RR_interval_cleaned_min = np.nanmin(i[3])
+
+        except ValueError:
+            RR_interval_cleaned_min = np.nan
+
+        try:
+            RR_interval_cleaned_max = np.nanmax(i[3])
+
+        except ValueError:
+            RR_interval_cleaned_max = np.nan
 
         hrv_welch_HF = i[4]["HRV_HF"][0]
         hrv_welch_VHF = i[4]["HRV_VHF"][0]
