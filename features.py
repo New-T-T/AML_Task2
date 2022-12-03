@@ -1,18 +1,54 @@
 import pandas as pd
+import numpy as np
+import scipy.stats as stats
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import SMOTE
+from sklearn.impute import SimpleImputer
 
 # Feature Extraction
 import biosppy.signals.ecg as ecg
 import neurokit2 as nk
 import heartpy as hp
 
-import numpy as np
-
-import scipy.stats as stats
-
 # Load datasets, decompressing pickle with gzip
 X_train = pd.read_pickle('data/X_train.pkl', compression='gzip')
 y_train = pd.read_pickle('data/y_train.pkl', compression='gzip')
 X_test = pd.read_pickle('data/X_test.pkl', compression='gzip')
+
+def remove_highly_correlated_features(X_train, X_test, threshold: float = 0.9, verbose: int = 1):
+    """
+    Remove highly correlated features from the dataset.
+    :param X_train: training set
+    :param X_test: test set
+    :param threshold: threshold for the correlation between features above which the features are removed
+    :param verbose: verbosity level
+    :return: X_train, X_test without highly correlated features
+    """
+    if verbose >= 1:
+        print(f"Removing highly correlated features")
+    correlated_features = set()
+    X_train_correlation_matrix = X_train.corr()
+    for i in range(len(X_train_correlation_matrix.columns)):
+        for j in range(i):
+            if abs(X_train_correlation_matrix.iloc[i, j]) > threshold:
+                colname = X_train_correlation_matrix.columns[i]
+                correlated_features.add(colname)
+
+    X_train = X_train.drop(labels=correlated_features, axis=1)
+    X_test = X_test.drop(labels=correlated_features, axis=1)
+    if verbose >= 2:
+        print(f"{'':<1} Shape of the training set: {X_train.shape}")
+    return X_train, X_test
+
+def balance_classes(X_train, y_train):
+    smote = SMOTE()
+    # fit predictor and target variable
+    x_smote, y_smote = smote.fit_resample(X_train, y_train)
+
+    #r_under_sampler = RandomUnderSampler(random_state=42, replacement=True) # fit predictor and target variable
+    #x_undersampled, y_undersampled = rus.fit_resample(X_train, y_train)
+
+    return x_smote, y_smote
 
 # Feature Selection
 
@@ -497,4 +533,26 @@ def feature_extraction(train_data_ts, test_data_ts):
 
 print(f"X_train: {X_train.shape} and X_test: {X_test.shape}.")
 
+X_train_index = X_train.copy().index
+X_test_index = X_test.copy().index
+
+X_train = X_train.dropna(axis = 1, how = 'all')
+X_test = X_test.dropna(axis = 1, how = 'all')
+
+X_train = pd.DataFrame(SimpleImputer().fit_transform(X_train), columns = X_train.columns, index = X_train_index)
+X_test = pd.DataFrame(SimpleImputer().fit_transform(X_test), columns = X_test.columns, index = X_test_index)
+
 X_train_features, X_test_features = feature_extraction(X_train.to_numpy(), X_test.to_numpy())
+
+X_train_features = X_train_features.dropna(axis = 1, how = 'all')
+X_test_features = X_test_features.dropna(axis = 1, how = 'all')
+
+X_train_features_index = X_train_features.copy().index
+X_test_features_index = X_test_features.copy().index
+
+X_train_features = pd.DataFrame(SimpleImputer().fit_transform(X_train_features), columns = X_train_features.columns, index = X_train_features_index)
+X_test_features = pd.DataFrame(SimpleImputer().fit_transform(X_test_features), columns = X_test_features.columns, index = X_test_features_index)
+
+X_train_removed, X_test_removed = remove_highly_correlated_features(X_train_features, X_test_features)
+
+X_smote, y_smote = balance_classes(X_train_removed, y_train["y"])
