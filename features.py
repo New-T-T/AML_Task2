@@ -3,6 +3,7 @@ import numpy as np
 import scipy.stats as stats
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import BorderlineSMOTE
 from sklearn.impute import SimpleImputer
 
 # Feature Extraction
@@ -41,7 +42,8 @@ def remove_highly_correlated_features(X_train, X_test, threshold: float = 0.9, v
     return X_train, X_test
 
 def balance_classes(X_train, y_train):
-    smote = SMOTE()
+    #smote = SMOTE()
+    smote = BorderlineSMOTE(sampling_strategy = 'minority')
     # fit predictor and target variable
     x_smote, y_smote = smote.fit_resample(X_train, y_train)
 
@@ -484,7 +486,6 @@ def other_parameters(data_ts):
 
         try:
             rsp_rate = nk.ecg_rsp(ecg_rate, sampling_rate=300)
-
             rsp_rate_mean = np.nanmean(rsp_rate)
             rsp_rate_median = np.nanmedian(rsp_rate)
             rsp_rate_min = np.nanmin(rsp_rate)
@@ -533,15 +534,17 @@ def feature_extraction(train_data_ts, test_data_ts):
 
 print(f"X_train: {X_train.shape} and X_test: {X_test.shape}.")
 
-X_train_index = X_train.copy().index
-X_test_index = X_test.copy().index
 
-X_train = X_train.dropna(axis = 1, how = 'all')
-X_test = X_test.dropna(axis = 1, how = 'all')
+X_train = X_train.fillna(0)
+X_smote, y_smote = balance_classes(X_train, y_train["y"])
+print(X_smote)
+print(y_smote)
 
-X_train = pd.DataFrame(SimpleImputer().fit_transform(X_train), columns = X_train.columns, index = X_train_index)
-X_test = pd.DataFrame(SimpleImputer().fit_transform(X_test), columns = X_test.columns, index = X_test_index)
 
+#X_smote.to_pickle('X_train_smote.pkl', compression='gzip')
+#y_smote.to_pickle('y_train_smote.pkl', compression='gzip')
+
+"""
 X_train_features, X_test_features = feature_extraction(X_train.to_numpy(), X_test.to_numpy())
 
 X_train_features = X_train_features.dropna(axis = 1, how = 'all')
@@ -556,3 +559,4 @@ X_test_features = pd.DataFrame(SimpleImputer().fit_transform(X_test_features), c
 X_train_removed, X_test_removed = remove_highly_correlated_features(X_train_features, X_test_features)
 
 X_smote, y_smote = balance_classes(X_train_removed, y_train["y"])
+"""
