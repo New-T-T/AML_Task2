@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from biosppy.signals import ecg
 import neurokit2 as nk
+from imblearn.over_sampling import BorderlineSMOTE
 
 
 def get_data():
@@ -63,28 +64,67 @@ def preprocess_data(X_train, y_train, X_test, seed):
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, stratify=y_train,
                                                       random_state=seed)
 
-def advances_preprocessing(X_train, y_train, X_test, seed):
-    raise NotImplementedError
-    # Compute the mean heartbeat of each signal
-    median_amplitudes = []
-    for row_id in range(len(X_train)):
-        r_peaks = ecg.engzee_segmenter(X_train.iloc[row_id], 300)['rpeaks']
-        if len(r_peaks) >= 2:
-            beats = ecg.extract_heartbeats(X_train.iloc[row_id].dropna().to_numpy(dtype='float32'), r_peaks, 300)['templates']
-            if len(beats) != 0:
-                md = np.median(beats, axis=0)
-                median_amplitudes.append(max(md))
+def balance_classes(X_train, y_train):
+    #smote = SMOTE()
+    smote = BorderlineSMOTE(sampling_strategy = 'not majority')
+    # fit predictor and target variable
+    x_smote, y_smote = smote.fit_resample(X_train, y_train)
+
+    #r_under_sampler = RandomUnderSampler(random_state=42, replacement=True) # fit predictor and target variable
+    #x_undersampled, y_undersampled = rus.fit_resample(X_train, y_train)
+
+    return x_smote, y_smote
+
+#%%
+seed = 42
+verbose = 3
+X_train, y_train, X_test = get_data()
+X_train_pad, X_test_pad = cleaning_and_zero_padding(X_train, X_test)
+#%%
+X_train_pad_orig = X_train_pad.copy()
+#%%
+X_train_pad, X_val_pad, y_train_pad, y_val_pad = train_test_split(X_train_pad, y_train, test_size=0.2, stratify=y_train, random_state=seed)
+#%%
+# set the name of the index column to 'id'
+X_train_pad.index.name = 'id'
+X_val_pad.index.name = 'id'
+X_test_pad.index.name = 'id'
+#%%
+# Save the data in csv files in data/train_val_split_pad folder
+X_train_pad.to_csv('data/train_val_split_pad/X_train_pad.csv')
+X_val_pad.to_csv('data/train_val_split_pad/X_val_pad.csv')
+y_train_pad.to_csv('data/train_val_split_pad/y_train_pad.csv')
+y_val_pad.to_csv('data/train_val_split_pad/y_val_pad.csv')
+X_test_pad.to_csv('data/train_val_split_pad/X_test_pad.csv')
+#%%
+X_test_pad3 = pd.read_csv('data/train_val_split_pad/X_test_pad.csv', index_col='id')
+#%%
+y_train_pad2 = pd.read_csv('data/train_val_split_pad/y_train_pad.csv')
+#%%
+
+import pandas as pd
+X_train_pad = pd.read_csv('data/original_pad/X_train_pad.csv', index_col='id')
+#%%
+y_train_pad = pd.read_csv('data/original_pad/y_train_pad.csv', index_col='id')
+
+
+
+
+
 
 
 #%%
 import pandas as pd
 X_train_pad = pd.read_pickle('data/original_pad/X_train_pad.pkl', compression='gzip')
 X_test_pad = pd.read_pickle('data/original_pad/X_test_pad.pkl', compression='gzip')
-X_train_pad.to_csv('data/X_train_pad.csv')
-X_test_pad.to_csv('data/X_test_pad.csv')
-
-
-
+y_train = pd.read_pickle('data/y_train.pkl', compression='gzip')
+#%%
+# set id as index for y
+y_train.set_index('id', inplace=True)
+#%%
+X_train_pad_balanced, y_train_balanced = balance_classes(X_train_pad, y_train)
+#%%
+X_train_pad_csv = pd.read_csv('data/original_pad/X_train_pad.csv', index_col='id')
 #%%
 # import pandas as pd
 # import numpy as np
@@ -119,33 +159,3 @@ X_test_pad.to_csv('data/X_test_pad.csv')
 # df = df.where(np.tril(np.ones(df.shape)).astype(np.bool))
 # df_test = df_test.where(np.tril(np.ones(df_test.shape)).astype(np.bool))
 # df_pad, df_test_pad = cleaning_and_zero_padding(df, df_test)
-
-
-
-#%%
-# # Compute the mean heartbeat of each signal
-# median_amplitudes = []
-# for row_id in range(len(X_train)):
-#     print(row_id)
-#     r_peaks = ecg.engzee_segmenter(X_train.iloc[row_id], 300)['rpeaks']
-#     if len(r_peaks) >= 2:
-#         beats = ecg.extract_heartbeats(X_train.iloc[row_id].dropna().to_numpy(dtype='float32'), r_peaks, 300)[
-#             'templates']
-#         if len(beats) != 0:
-#             md = np.median(beats, axis=0)
-#             median_amplitudes.append(max(md))
-
-#%%
-# nb_inverted = 0
-# for id_loop, row_id in enumerate(X_train.index):
-#     print(row_id)
-#     signal = X_train.loc[row_id].dropna().to_numpy(dtype='float32')
-#     signal, is_inverted = nk.ecg_invert(signal, sampling_rate=300)
-#     if is_inverted:
-#         nb_inverted += 1
-#     r_peaks = ecg.engzee_segmenter(signal, 300)['rpeaks']
-#     if len(r_peaks) >= 2:
-#         beats = ecg.extract_heartbeats(signal, r_peaks, 300)['templates']
-#         if len(beats) != 0:
-#             mu = np.mean(beats, axis=0)
-#             signal = signal / max(mu)

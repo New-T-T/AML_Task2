@@ -1,7 +1,8 @@
 import torch
+from torch import nn
 import time
 from sklearn.metrics import recall_score, precision_score, f1_score, accuracy_score
-PATH = '/content/drive/MyDrive/task2'
+PATH = '/content/drive/MyDrive/task2b'
 
 def prediction_metrics(y_pred, y_test):
     y_pred_softmax = torch.log_softmax(y_pred, dim=1)
@@ -81,7 +82,6 @@ def train(model, train_dl, val_dl, epochs, criterion, device, verbose=False):
     val_epoch_loss, val_epoch_acc, val_epoch_precision, val_epoch_recall, val_epoch_f1 = validation(model, val_dl, criterion, device)
     print(f'=== initialized === validation loss {val_epoch_loss/len(val_dl)} === validation accuracy {val_epoch_acc/len(val_dl)} ===')
     min_val_loss = val_epoch_loss
-    torch.save(model.state_dict(), 'model.path')
 
     for epoch in range(epochs):  # loop over the dataset multiple times
         start = time.time()
@@ -136,12 +136,24 @@ def train(model, train_dl, val_dl, epochs, criterion, device, verbose=False):
         # f1_stats['train'].append(train_epoch_f1 / len(train_dl))
         # f1_stats['val'].append(val_epoch_f1 / len(val_dl))
 
-
-        print(f' Epoch {epoch+1} {time.time()-start:.0f}s | '
-              f'Training loss: {train_epoch_loss / len(train_dl)} |  '
-              f'Validation loss: {val_epoch_loss / len(val_dl)} |  '
-              f'Training accuracy: {train_epoch_acc / len(train_dl)} |  '
-              f'Validation accuracy: {val_epoch_acc / len(val_dl)} |  ')
+        if epoch == 0:
+            print(f'Epoch \t\t| Train Loss \t\t| Validaº Loss \t\t| Train Acc \t\t| Validaº Acc \t\t|')
+        print(f'{epoch + 1} ({time.time()-start:.0f}s) \t| '
+              f'{train_epoch_loss / len(train_dl)}\t| '
+              f'{val_epoch_loss / len(val_dl)}\t| '
+              f'{train_epoch_acc / len(train_dl)}\t| '
+              f'{val_epoch_acc / len(val_dl)}\t| ')
+              # f'Training precision: {train_epoch_precision / len(train_dl)} |  '
+              # f'Validation precision: {val_epoch_precision / len(val_dl)} |  '
+              # f'Training recall: {train_epoch_recall / len(train_dl)} |  '
+              # f'Validation recall: {val_epoch_recall / len(val_dl)} |  '
+              # f'{train_epoch_f1 / len(train_dl)}\t|  '
+              # f'{val_epoch_f1 / len(val_dl)}\t|  ')
+        # print(f' Epoch {epoch+1} {time.time()-start:.0f}s | '
+        #       f'Training loss: {train_epoch_loss / len(train_dl)} |  '
+        #       f'Validation loss: {val_epoch_loss / len(val_dl)} |  '
+        #       f'Training accuracy: {train_epoch_acc / len(train_dl)} |  '
+        #       f'Validation accuracy: {val_epoch_acc / len(val_dl)} |  ')
               # f'Training precision: {train_epoch_precision / len(train_dl)} |  '
               # f'Validation precision: {val_epoch_precision / len(val_dl)} |  '
               # f'Training recall: {train_epoch_recall / len(train_dl)} |  '
@@ -153,7 +165,7 @@ def train(model, train_dl, val_dl, epochs, criterion, device, verbose=False):
 
         if val_epoch_loss < min_val_loss:
             print(f'Validation loss decreased ({min_val_loss:.6f} --> {val_epoch_loss:.6f}).  Saving model ...')
-            torch.save(model.state_dict(), f'{PATH}/model_full.path')
+            torch.save(model.state_dict(), f'{PATH}/model_fullsampler.path')
             min_val_loss = val_epoch_loss
 
     print('Finished Training')

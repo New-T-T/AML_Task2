@@ -1,10 +1,3 @@
-from nn_preprocessing import get_data, cleaning_and_zero_padding, preprocess_data, advances_preprocessing
-
-# seed = 42
-# verbose = 3
-# X_train, y_train, X_test = get_data()
-# X_train_pad, X_test_pad = cleaning_and_zero_padding(X_train, X_test)
-
 import numpy as np
 import pandas as pd
 import torch
@@ -20,14 +13,18 @@ print(device)
 
 #%%
 from cnn1d.data_loading import get_datasets, get_dataloaders
-PHASE = 'training'
+PHASE = 'testing'
 if PHASE == 'training':
-    train_ds, predict_ds, y_train, y_predict = get_datasets(device=device, phase='training')
+    # train_ds, predict_ds, y_train, y_predict = get_datasets(device=device, phase='training')
+    train_ds, val_ds, predict_ds = get_datasets(device=device, phase='training')
+
 elif PHASE == 'testing':
-    train_ds, predict_ds, y_train = get_datasets(device=device, phase='testing')
+    train_ds, val_ds, predict_ds = get_datasets(device=device, phase='testing')
+    # train_ds, predict_ds, y_train = get_datasets(device=device, phase='testing')
+
 #%%
-BATCH_SIZE = 64
-X_train_dl, X_val_dl, X_predict_dl, class_weights = get_dataloaders(train_ds=train_ds, y_train=y_train,
+BATCH_SIZE = 30
+X_train_dl, X_val_dl, X_predict_dl, class_weights = get_dataloaders(train_ds=train_ds, val_ds=val_ds, # y_train=y_train,
                                                                     predict_ds=predict_ds,
                                                                     batch_size=BATCH_SIZE, seed=SEED)
 #%%
@@ -42,7 +39,7 @@ for X_batch, y_batch in X_val_dl:
     print(X_batch.shape)
     print(y_batch.shape)
     y_array = y_batch.numpy(force=True).tolist()
-    y_all.extend(y_array)
+    y_all.append(y_array)
 # display the distribution of the classes for each batch
 fig = go.Figure()
 for i in range(len(y_all)):
